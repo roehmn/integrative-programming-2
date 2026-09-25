@@ -12,78 +12,59 @@ class EmployeeController extends Controller
     {
         $query = Employee::with('department');
 
-        if ($request->has('search')) {
+        $query->when($request->filled('search'), function ($q) use ($request) {
             $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+            $q->where(function ($subQuery) use ($search) {
+                $subQuery->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
             });
-        }
+        });
 
-        if ($request->has('department_id')) {
-            $query->where('department_id', $request->department_id);
-        }
+        $query->when($request->filled('department_id'), function ($q) use ($request) {
+            $q->where('department_id', $request->department_id);
+        });
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(1));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'email' => 'required|email|unique:employees,email',
-            'department' => 'required|string|max:100',
-            'position' => 'required|string|max:100',
+            'first_name'    => 'required|string|max:100',
+            'last_name'     => 'required|string|max:100',
+            'email'         => 'required|email|unique:employees,email',
+            'department_id' => 'required|exists:departments,id',
+            'position'      => 'required|string|max:100',
         ]);
 
         $employee = Employee::create($validated);
 
-        return response()->json($employee, 201);
+        return response()->json($employee->load('department'), 201);
     }
 
-    public function show($id)
+    public function show(Employee $employee)
     {
-        $employee = Employee::find($id);
-
-        if (!$employee) {
-            return response()->json(['message' => 'Employee not found'], 404);
-        }
-
-        return response()->json($employee);
+        return response()->json($employee->load('department'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Employee $employee)
     {
-        $employee = Employee::find($id);
-
-        if (!$employee) {
-            return response()->json(['message' => 'Employee not found'], 404);
-        }
-
         $validated = $request->validate([
-            'first_name' => 'sometimes|string|max:100',
-            'last_name' => 'sometimes|string|max:100',
-            'email' => 'sometimes|email|unique:employees,email,' . $id,
-            'department' => 'sometimes|string|max:100',
-            'position' => 'sometimes|string|max:100',
+            'first_name'    => 'sometimes|string|max:100',
+            'last_name'     => 'sometimes|string|max:100',
+            'email'         => 'sometimes|email|unique:employees,email,' . $employee->id,
+            'department_id' => 'sometimes|exists:departments,id',
+            'position'      => 'sometimes|string|max:100',
         ]);
 
         $employee->update($validated);
 
-        return response()->json($employee);
+        return response()->json($employee->load('department'));
     }
 
-    public function destroy($id)
+    public function destroy(Employee $employee)
     {
-        $employee = Employee::find($id);
-
-        if (!$employee) {
-            return response()->json(['message' => 'Employee not found'], 404);
-        }
-
         $employee->delete();
 
         return response()->json(['message' => 'Employee deleted successfully']);
