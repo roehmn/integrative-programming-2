@@ -49,18 +49,26 @@ class EmployeeController extends Controller
     }
 
     public function update(Request $request, Employee $employee)
+{
+    $validated = $request->validate([
+        'first_name'    => 'sometimes|string|max:100',
+        'last_name'     => 'sometimes|string|max:100',
+        'email'         => 'sometimes|email|unique:employees,email,' . $employee->id,
+        'department_id' => 'sometimes|exists:departments,id',
+        'position'      => 'sometimes|string|max:100',
+    ]);
+
+    $employee->update($validated);
+
+    $employee->load('department');
+
+    return response()->json($employee);
+}
+
+   
+    public function patch(Request $request, Employee $employee)
     {
-        $validated = $request->validate([
-            'first_name'    => 'sometimes|string|max:100',
-            'last_name'     => 'sometimes|string|max:100',
-            'email'         => 'sometimes|email|unique:employees,email,' . $employee->id,
-            'department_id' => 'sometimes|exists:departments,id',
-            'position'      => 'sometimes|string|max:100',
-        ]);
-
-        $employee->update($validated);
-
-        return response()->json($employee->load('department'));
+        return $this->update($request, $employee);
     }
 
     public function destroy(Employee $employee)

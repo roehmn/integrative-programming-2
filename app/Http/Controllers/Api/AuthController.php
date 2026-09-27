@@ -60,17 +60,35 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        // Prevent "Call to a member function currentAccessToken() on null"
         if (!$user) {
             return response()->json([
                 'message' => 'Unauthenticated or missing Bearer token.'
             ], 401);
         }
 
+        // Delete only the active token used for this request
         $user->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Logged out successfully'
+        ]);
+    }
+
+    public function logoutAll(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated or missing Bearer token.'
+            ], 401);
+        }
+
+        // Deletes all Sanctum tokens associated with the logged-in user
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Successfully logged out from all devices.'
         ]);
     }
 }
